@@ -1,0 +1,212 @@
+[
+  {
+    "time": "2026-03-23 18:16:41.3277",
+    "level": "Info",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:16:40Z [Info] Parsing args...",
+    "eventProperties": {}
+  },
+  {
+    "time": "2026-03-23 18:16:41.3734",
+    "level": "Error",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:16:41Z [Error] Something went wrong adding domain users to rules.",
+    "eventProperties": {}
+  },
+  {
+    "time": "2026-03-23 18:16:41.4216",
+    "level": "Warn",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:16:41Z [Share] ...",
+    "eventProperties": {
+      "Green": {
+        "DateTime": "2026-03-24T01:16:41.4195103Z",
+        "Type": "ShareResult",
+        "ShareResult": {
+          "Mirror": false,
+          "ScanShare": false,
+          "SharePath": "\\\\Etihad-DC01.mancity.local\\CertEnroll",
+          "ShareComment": "Active Directory Certificate Services share",
+          "Listable": true,
+          "RootWritable": false,
+          "RootReadable": true,
+          "RootModifyable": false,
+          "Triage": "Green"
+        }
+      }
+    }
+  },
+  {
+    "time": "2026-03-23 18:16:41.5101",
+    "level": "Warn",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:16:41Z [Share] ...",
+    "eventProperties": {
+      "Black": {
+        "DateTime": "2026-03-24T01:16:41.4610235Z",
+        "Type": "ShareResult",
+        "ShareResult": {
+          "Mirror": false,
+          "ScanShare": false,
+          "SharePath": "\\\\Foden-PC01.mancity.local\\ADMIN$",
+          "Listable": true,
+          "RootWritable": false,
+          "RootReadable": false,
+          "RootModifyable": false,
+          "Triage": "Black"
+        }
+      }
+    }
+  },
+  {
+    "time": "2026-03-23 18:16:51.1486",
+    "level": "Warn",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:16:51Z [File] {Red}<KeepPsCredentials|R|-SecureString|461B|...> message-only entry",
+    "eventProperties": {}
+  },
+  {
+    "time": "2026-03-23 18:16:51.1486",
+    "level": "Warn",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:16:51Z [File] ...",
+    "eventProperties": {
+      "Red": {
+        "DateTime": "2026-03-24T01:16:51.1444177Z",
+        "Type": "FileResult",
+        "FileResult": {
+          "FileInfo": {
+            "Name": "backup-script.ps1",
+            "Length": 416,
+            "DirectoryName": "\\\\Etihad-DC01.mancity.local\\TeamDocs\\IT",
+            "Directory": {
+              "Name": "IT",
+              "FullName": "\\\\Etihad-DC01.mancity.local\\TeamDocs\\IT"
+            },
+            "IsReadOnly": false,
+            "Exists": true,
+            "FullName": "\\\\Etihad-DC01.mancity.local\\TeamDocs\\IT\\backup-script.ps1",
+            "Extension": ".ps1",
+            "CreationTime": "2026-03-24T00:04:39.8186121Z",
+            "LastWriteTime": "2026-03-24T00:04:39.8186121Z",
+            "Attributes": "Archive"
+          },
+          "TextResult": {
+            "MatchedStrings": ["-SecureString"],
+            "MatchContext": "\\$BackupPass\\ =\\ 'G0ldenEr4!City'\\n\\$Cred\\ =\\ New-Object\\ -SecureString"
+          },
+          "RwStatus": {
+            "CanRead": true,
+            "CanWrite": false,
+            "CanModify": false
+          },
+          "MatchedRule": {
+            "EnumerationScope": "ContentsEnumeration",
+            "RuleName": "KeepPsCredentials",
+            "MatchAction": "Collect",
+            "Description": "Files with contents matching these regexen are very interesting.",
+            "MatchLocation": "FileContentAsString",
+            "WordListType": "Regex",
+            "MatchLength": 0,
+            "WordList": ["-SecureString", "-AsPlainText"],
+            "Triage": "Red"
+          }
+        }
+      }
+    }
+  },
+  {
+    "time": "2026-03-23 18:18:20.2872",
+    "level": "Warn",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:18:20Z [File] ...",
+    "eventProperties": {
+      "Yellow": {
+        "DateTime": "2026-03-24T01:18:20.2872456Z",
+        "Type": "FileResult",
+        "FileResult": {
+          "FileInfo": {
+            "Name": "store.bak",
+            "Length": 192512,
+            "DirectoryName": "\\\\Foden-PC01.mancity.local\\C$\\ProgramData\\USOPrivate\\UpdateStore",
+            "IsReadOnly": false,
+            "Exists": true,
+            "FullName": "\\\\Foden-PC01.mancity.local\\C$\\ProgramData\\USOPrivate\\UpdateStore\\store.bak",
+            "Extension": ".bak",
+            "LastWriteTime": "2026-03-24T00:47:20.5832387Z",
+            "Attributes": "Archive, NotContentIndexed"
+          },
+          "TextResult": {
+            "MatchedStrings": ["^\\.bak$"],
+            "MatchContext": ".bak"
+          },
+          "RwStatus": {
+            "CanRead": true,
+            "CanWrite": false,
+            "CanModify": false
+          },
+          "MatchedRule": {
+            "EnumerationScope": "FileEnumeration",
+            "RuleName": "KeepDatabaseByExtension",
+            "MatchAction": "Collect",
+            "Description": "Files with these extensions are a little interesting.",
+            "MatchLocation": "FileExtension",
+            "WordListType": "Exact",
+            "MatchLength": 0,
+            "WordList": [".mdf", ".sdf", ".sqldump", ".bak"],
+            "Triage": "Yellow"
+          }
+        }
+      }
+    }
+  },
+  {
+    "time": "2026-03-23 18:18:30.1316",
+    "level": "Warn",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:18:30Z [File] ...",
+    "eventProperties": {
+      "Green": {
+        "DateTime": "2026-03-24T01:18:30.1316416Z",
+        "Type": "FileResult",
+        "FileResult": {
+          "FileInfo": {
+            "Name": "RoamingCredentialSettings.xml",
+            "Length": 3417,
+            "DirectoryName": "\\\\Foden-PC01.mancity.local\\C$\\ProgramData\\Microsoft\\UEV\\InboxTemplates",
+            "IsReadOnly": false,
+            "Exists": true,
+            "FullName": "\\\\Foden-PC01.mancity.local\\C$\\ProgramData\\Microsoft\\UEV\\InboxTemplates\\RoamingCredentialSettings.xml",
+            "Extension": ".xml",
+            "LastWriteTime": "2024-04-01T07:22:50.2787401Z",
+            "Attributes": "Archive"
+          },
+          "TextResult": {
+            "MatchedStrings": ["credential"],
+            "MatchContext": "RoamingCredentialSettings.xml"
+          },
+          "RwStatus": {
+            "CanRead": true,
+            "CanWrite": false,
+            "CanModify": false
+          },
+          "MatchedRule": {
+            "EnumerationScope": "FileEnumeration",
+            "RuleName": "KeepNameContainsGreen",
+            "MatchAction": "Collect",
+            "Description": "A description of what a rule does.",
+            "MatchLocation": "FileName",
+            "WordListType": "Contains",
+            "MatchLength": 0,
+            "WordList": ["passw", "secret", "credential", "thycotic", "cyberark"],
+            "Triage": "Green"
+          }
+        }
+      }
+    }
+  },
+  {
+    "time": "2026-03-23 18:21:41.4175",
+    "level": "Info",
+    "message": "[MANCITY\\p.foden@Foden-PC01] 2026-03-24 01:21:41Z [Info] Finished at 3/23/2026 6:21:41 PM",
+    "eventProperties": {}
+  },
+  {
+    "time": "2026-03-23 18:21:41.4175",
+    "level": "Info",
+    "message": "Done.",
+    "eventProperties": {}
+  }
+]

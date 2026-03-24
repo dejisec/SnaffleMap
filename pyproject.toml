@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "snafflemap"
+version = "0.1.0"
+description = "Parse, filter, and export Snaffler output"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.0",
+    "tabulate>=0.9",
+    "Jinja2>=3.1",
+]
+
+[project.scripts]
+snafflemap = "snafflemap.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/dejisec/SnaffleMap"
+Repository = "https://github.com/dejisec/SnaffleMap"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.9",
+]

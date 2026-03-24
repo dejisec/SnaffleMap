@@ -1,0 +1,7 @@
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:09Z	[Info]	Starting scan
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:19Z	[File]	Green	KeepNameContainsGreen	R			credential	1433	2024-01-08 09:00:00Z	\\Etihad-DC01.mancity.local\TeamDocs\file.xml		match_context
+this is garbage with no tabs
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:48:33Z	[File]	Red	BadRule	R			match	not_a_number	2024-10-10 15:19:10Z	\\Foden-PC01.mancity.local\ADMIN$\f.txt		ctx
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:48:34Z	[File]	Red	TooFew	R
+	just	a	few	random	fields
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:48:35Z	[File]	Yellow	GoodRule	R			match	512	2025-01-20 14:15:00Z	\\Foden-PC01.mancity.local\ADMIN$\good.txt		context

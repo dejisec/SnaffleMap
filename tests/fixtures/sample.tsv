@@ -1,0 +1,19 @@
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:09Z	[Info]	Parsing args...
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:09Z	[Info]	Parsed args successfully.
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:10Z	[Error]	Something went wrong adding domain users to rules.
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:10Z	[Share]	Green	\\Etihad-DC01.mancity.local\NETLOGON	R
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:10Z	[Share]	Green	\\Etihad-DC01.mancity.local\SYSVOL	R
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:10Z	[Share]	Black	\\Foden-PC01.mancity.local\ADMIN$
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:10Z	[Share]	Green	\\Foden-PC01.mancity.local\ADMIN$	R
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:19Z	[File]	Red	KeepPsCredentials	R			-SecureString	416	2026-03-24 00:04:39Z	\\Etihad-DC01.mancity.local\TeamDocs\IT\backup-script.ps1		T\ MODIFY\n\$BackupPass\ =\ 'G0ldenEr4!City'\n
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:47:20Z	[File]	Green	KeepNameContainsGreen	R			passw	219	2026-03-24 00:04:39Z	\\Etihad-DC01.mancity.local\TeamDocs\IT\passwords.csv		passwords.csv
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:48:33Z	[File]	Red	KeepPassOrKeyInCode	R			[\s]+-passw?o?r?d?	13868	2024-04-01 07:22:46Z	\\Foden-PC01.mancity.local\ADMIN$\diagnostics\scheduled\Maintenance\CL_Utility.ps1		\$type\ =\ Add-Type\ -PassThru\r\n
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:48:45Z	[File]	Yellow	KeepDatabaseByExtension	R			^\.bak$	192512	2026-03-24 00:47:20Z	\\Foden-PC01.mancity.local\C$\ProgramData\USOPrivate\UpdateStore\store.bak		.bak
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:49:01Z	[File]	Black	KeepPassOrKeyInCode	R			passw?o?r?d\s*=\s*[\'\"][^\'\"]....	519	2026-03-24 00:04:36Z	\\Etihad-DC01.mancity.local\SYSVOL\mancity.local\Policies\{944582B5}\Machine\Preferences\Groups\Groups.xml		cpassword="I6NcfnUDQ\+S3vr8sZolQfnMRCHsL7rV2ztWharC19oI="
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:48:54Z	[File]	Green	KeepNameContainsGreen	R			credential	3417	2024-04-01 07:22:50Z	\\Foden-PC01.mancity.local\C$\ProgramData\Microsoft\UEV\InboxTemplates\RoamingCredentialSettings.xml		RoamingCredentialSettings.xml
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:52:10Z	[Info]	Status Update:
+ShareFinder Tasks Completed: 3
+TreeWalker Tasks Completed: 5484
+FileScanner Tasks Completed: 15655
+[MANCITY\p.foden@Foden-PC01]	2026-03-24 00:52:10Z	[Info]	Finished at 3/23/2026 5:52:10 PM
+Done.

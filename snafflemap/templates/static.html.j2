@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SnaffleMap Report</title>
+<style>
+  body { background: #1a1a2e; color: #e0e0e0; font-family: monospace; margin: 20px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+  th, td { border: 1px solid #333; padding: 6px 10px; text-align: left; }
+  th { background: #16213e; }
+  pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+  h2 { margin-top: 30px; }
+  .sev-Black { background: rgba(155,89,182,0.15); }
+  .sev-Red { background: rgba(231,76,60,0.15); }
+  .sev-Yellow { background: rgba(243,156,18,0.15); }
+  .sev-Green { background: rgba(39,174,96,0.15); }
+  .sev-Gray { background: rgba(149,165,166,0.15); }
+</style>
+</head>
+<body>
+<h1>SnaffleMap Static Report</h1>
+
+{% for sev in severities %}
+{% set group = result_set.files | selectattr("severity", "equalto", sev) | list %}
+{% if group %}
+<h2>{{ sev.value }} ({{ group | length }} findings)</h2>
+<table>
+<tr><th>Rule</th><th>Perms</th><th>Path</th><th>Size</th><th>Modified</th><th>Snippet</th></tr>
+{% for f in group %}
+{% set perms = ("R" if f.can_read else "-") + ("W" if f.can_write else "-") + ("M" if f.can_modify else "-") %}
+{% set size = f.file_size | human_size %}
+{% set date = f.modified_date.strftime("%Y-%m-%d") if f.modified_date else "" %}
+<tr class="sev-{{ sev.value }}">
+  <td>{{ f.rule_name }}</td>
+  <td>{{ perms }}</td>
+  {% set parent_url = "file:///" + (f.file_path | replace("\\", "/")).rsplit("/", 1)[0] %}
+  <td>{{ f.file_path }} <a href="{{ parent_url }}">[folder]</a></td>
+  <td>{{ size }}</td>
+  <td>{{ date }}</td>
+  <td><pre>{{ f.match_context }}</pre></td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
+{% endfor %}
+
+{% set all_shares = result_set.shares %}
+{% if all_shares %}
+<h2>SHARES ({{ all_shares | length }} findings)</h2>
+<table>
+<tr><th>Severity</th><th>Perms</th><th>Path</th><th>Host</th><th>Share</th></tr>
+{% for s in all_shares %}
+{% set perms = ("R" if s.can_read else "-") + ("W" if s.can_write else "-") + ("M" if s.can_modify else "-") %}
+<tr class="sev-{{ s.severity.value }}">
+  <td>{{ s.severity.value }}</td>
+  <td>{{ perms }}</td>
+  {% set share_url = "file:///" + s.share_path.replace("\\", "/") %}
+  <td>{{ s.share_path }} <a href="{{ share_url }}">[folder]</a></td>
+  <td>{{ s.hostname }}</td>
+  <td>{{ s.share_name }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
+
+{% set all_dirs = result_set.dirs %}
+{% if all_dirs %}
+<h2>DIRECTORIES ({{ all_dirs | length }} findings)</h2>
+<table>
+<tr><th>Severity</th><th>Path</th><th>Host</th></tr>
+{% for d in all_dirs %}
+<tr class="sev-{{ d.severity.value }}">
+  <td>{{ d.severity.value }}</td>
+  {% set dir_url = "file:///" + d.dir_path.replace("\\", "/") %}
+  <td>{{ d.dir_path }} <a href="{{ dir_url }}">[folder]</a></td>
+  <td>{{ d.hostname }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
+
+</body>
+</html>
