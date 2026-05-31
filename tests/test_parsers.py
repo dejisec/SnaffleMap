@@ -22,11 +22,6 @@ from snafflemap.parsers import (
 )
 
 
-# ---------------------------------------------------------------------------
-# TSV parsing
-# ---------------------------------------------------------------------------
-
-
 class TestParseTsvFileResults:
     def test_parse_tsv_file_results(self, sample_tsv):
         rs = parse_tsv(sample_tsv)
@@ -171,11 +166,6 @@ class TestParseTsvStrictMode:
     def test_parse_tsv_strict_clean_file_ok(self, sample_tsv):
         rs = parse_tsv(sample_tsv, strict=True)
         assert rs.file_count == 6
-
-
-# ---------------------------------------------------------------------------
-# JSON parsing
-# ---------------------------------------------------------------------------
 
 
 class TestParseJsonFileResult:
@@ -373,11 +363,6 @@ class TestParseJsonBareArray:
         assert rs.shares[0].share_path == r"\\DC01\NETLOGON"
 
 
-# ---------------------------------------------------------------------------
-# detect_format
-# ---------------------------------------------------------------------------
-
-
 class TestDetectFormat:
     def test_detect_format_tsv(self, sample_tsv):
         assert detect_format(sample_tsv) == "tsv"
@@ -404,11 +389,6 @@ class TestDetectFormat:
         assert detect_format(f) == "tsv"
 
 
-# ---------------------------------------------------------------------------
-# parse (auto-detect + force)
-# ---------------------------------------------------------------------------
-
-
 class TestParseAutoDetect:
     def test_parse_auto_tsv(self, sample_tsv):
         rs = parse(sample_tsv)
@@ -430,22 +410,13 @@ class TestParseAutoDetect:
         rs = parse(sample_json, format="json")
         assert rs.file_count == 3
 
-    def test_parse_force_format_overrides_extension(self, tmp_path):
-        # A .json extension file but forced as TSV — should fail gracefully or raise
-        # Here we just verify the format parameter is respected: force TSV on a TSV file
-        # renamed with .json extension
-        data = Path(
-            "/Users/t3kk3r5/Downloads/SnaffleMap/tests/fixtures/sample.tsv"
-        ).read_text(encoding="utf-8")
+    def test_parse_force_format_overrides_extension(self, sample_tsv, tmp_path):
+        # A .json extension file whose content is actually TSV — forcing TSV must work
+        data = Path(sample_tsv).read_text(encoding="utf-8")
         fake = tmp_path / "data.json"
         fake.write_text(data, encoding="utf-8")
         rs = parse(fake, format="tsv")
         assert rs.file_count == 6
-
-
-# ---------------------------------------------------------------------------
-# parse_iter (streaming)
-# ---------------------------------------------------------------------------
 
 
 class TestParseIter:
@@ -478,11 +449,6 @@ class TestParseIter:
         results = list(parse_iter(malformed_tsv))
         # 2 valid FileResults, rest skipped
         assert len(results) == 2
-
-
-# ---------------------------------------------------------------------------
-# Unescape
-# ---------------------------------------------------------------------------
 
 
 class TestUnescapeFunction:
@@ -576,11 +542,6 @@ class TestParseUnescape:
         assert "\n" in rs.files[0].match_context
 
 
-# ---------------------------------------------------------------------------
-# deduplicate
-# ---------------------------------------------------------------------------
-
-
 class TestDeduplicate:
     def _make_file(self, path, severity, line=1):
         return FileResult(
@@ -654,11 +615,6 @@ class TestDeduplicate:
         assert rs_out.files[0].severity is Severity.BLACK
 
 
-# ---------------------------------------------------------------------------
-# ParseError
-# ---------------------------------------------------------------------------
-
-
 class TestParseError:
     def test_parse_error_is_exception(self):
         err = ParseError("something went wrong", line_number=5)
@@ -672,11 +628,6 @@ class TestParseError:
     def test_parse_error_no_line_number(self):
         err = ParseError("oops")
         assert err.line_number is None
-
-
-# ---------------------------------------------------------------------------
-# Encoding and auto-detection edge cases
-# ---------------------------------------------------------------------------
 
 
 class TestEncodingAndDetection:
@@ -725,3 +676,33 @@ class TestEncodingAndDetection:
         )
         results = list(parse_iter(str(f)))
         assert len(results) == 1
+
+
+class TestParseJsonl:
+    def test_detect_format_jsonl_by_extension(self, tmp_path):
+        f = tmp_path / "x.jsonl"
+        f.write_text(
+            '{"type":"dir","severity":"Green","dir_path":"\\\\H\\\\S"}\n',
+            encoding="utf-8",
+        )
+        assert detect_format(f) == "jsonl"
+
+    def test_parse_jsonl_counts(self):
+        from snafflemap.parsers import parse_jsonl
+
+        rs = parse_jsonl(Path(__file__).parent / "fixtures" / "sample.jsonl")
+        assert rs.file_count == 1
+        assert rs.share_count == 1
+        assert rs.dir_count == 1
+
+    def test_jsonl_round_trip(self, sample_tsv, tmp_path):
+        from snafflemap.exporters import jsonl as jsonl_exporter
+        from snafflemap.parsers import parse_jsonl
+
+        rs = parse_tsv(sample_tsv)
+        out = tmp_path / "rt.jsonl"
+        jsonl_exporter.export(rs, str(out))
+        rs2 = parse_jsonl(out)
+        assert rs2.file_count == rs.file_count
+        assert rs2.share_count == rs.share_count
+        assert {f.finding_id for f in rs2.files} == {f.finding_id for f in rs.files}

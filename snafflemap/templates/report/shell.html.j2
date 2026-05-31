@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SnaffleMap — {{ report_id }}</title>
+<style>{{ app_css | safe }}</style>
+</head>
+<body>
+<div id="sm-app">
+  <header id="sm-header">
+    <div class="sm-brand"><span>SnaffleMap</span></div>
+    <div id="sm-query-wrap"><input id="sm-query" type="text" autocomplete="off"
+      placeholder="Search… e.g.  rule:Password host:DC*  -status:false-positive" /></div>
+    <nav id="sm-view-switch">
+      <button data-view="workbench" class="active">Workbench</button>
+      <button data-view="map">Map</button>
+      <button data-view="report">Report</button>
+    </nav>
+    <div id="sm-actions"></div>
+  </header>
+  <div id="sm-rail" data-open="false"></div>
+  <div id="sm-rail-scrim"></div>
+  <main id="sm-main">
+    <section id="sm-list" aria-label="findings"></section>
+    <aside id="sm-detail" data-open="false"></aside>
+    <section id="sm-map" hidden></section>
+    <section id="sm-report" hidden></section>
+  </main>
+  <div id="sm-bulk" hidden></div>
+</div>
+<script id="sm-data" type="application/json">{{ sm_data_json | safe }}</script>
+<script>{{ app_js | safe }}</script>
+</body>
+</html>

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,22 +11,12 @@ from typing import Generator
 from snafflemap.models import DirResult, FileResult, ResultSet, Severity, ShareResult
 
 
-# ---------------------------------------------------------------------------
-# ParseError
-# ---------------------------------------------------------------------------
-
-
 class ParseError(Exception):
     """Raised in strict mode when a line or entry cannot be parsed."""
 
     def __init__(self, message: str, line_number: int | None = None) -> None:
         super().__init__(message)
         self.line_number = line_number
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _unescape_match_context(text: str) -> str:
@@ -83,6 +74,14 @@ def _parse_date(raw: str) -> datetime:
             return dt
         except ValueError:
             continue
+    # Last resort: try datetime.fromisoformat (handles +HH:MM offsets in Python 3.7+)
+    try:
+        dt = datetime.fromisoformat(raw)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except ValueError:
+        pass
     raise ValueError(f"Cannot parse date: {raw!r}")
 
 
@@ -178,11 +177,6 @@ def _parse_tsv_line(
         return None
 
 
-# ---------------------------------------------------------------------------
-# parse_tsv
-# ---------------------------------------------------------------------------
-
-
 def parse_tsv(
     path: Path | str,
     *,
@@ -226,17 +220,13 @@ def parse_tsv(
                     ) from exc
                 parse_warnings.append(f"Line {line_number}: {exc}")
 
+    src = (path.name,)
     return ResultSet(
-        files=files,
-        shares=shares,
-        dirs=dirs,
+        files=[dataclasses.replace(f, sources=src) for f in files],
+        shares=[dataclasses.replace(s, sources=src) for s in shares],
+        dirs=[dataclasses.replace(d, sources=src) for d in dirs],
         warnings=parse_warnings if parse_warnings else None,
     )
-
-
-# ---------------------------------------------------------------------------
-# parse_json
-# ---------------------------------------------------------------------------
 
 
 def _parse_json_entry(
@@ -396,17 +386,94 @@ def parse_json(
     if total == 0:
         parse_warnings.append("No results parsed from JSON file.")
 
+    src = (path.name,)
+    return ResultSet(
+        files=[dataclasses.replace(f, sources=src) for f in files],
+        shares=[dataclasses.replace(s, sources=src) for s in shares],
+        dirs=[dataclasses.replace(d, sources=src) for d in dirs],
+        warnings=parse_warnings if parse_warnings else None,
+    )
+
+
+def parse_jsonl(
+    path: Path | str,
+    *,
+    strict: bool = False,
+    unescape: bool = False,
+) -> ResultSet:
+    """Parse a SnaffleMap JSONL file (one finding object per line)."""
+    path = Path(path)
+    files: list[FileResult] = []
+    shares: list[ShareResult] = []
+    dirs: list[DirResult] = []
+    parse_warnings: list[str] = []
+
+    with path.open(encoding="utf-8-sig", errors="replace") as fh:
+        for line_number, raw in enumerate(fh, start=1):
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                rec = json.loads(raw)
+                rtype = rec.get("type")
+                src = tuple(rec.get("sources", []) or ())
+                if rtype == "file":
+                    ctx = rec.get("match_context", "")
+                    if unescape:
+                        ctx = _unescape_match_context(ctx)
+                    files.append(
+                        FileResult(
+                            severity=Severity.from_string(rec["severity"]),
+                            rule_name=rec.get("rule_name", ""),
+                            can_read=bool(rec.get("can_read", False)),
+                            can_write=bool(rec.get("can_write", False)),
+                            can_modify=bool(rec.get("can_modify", False)),
+                            matched_string=rec.get("matched_string", ""),
+                            file_size=int(rec.get("file_size", 0)),
+                            modified_date=_parse_date(
+                                rec.get("modified_date", "1970-01-01T00:00:00Z")
+                            ),
+                            file_path=rec.get("file_path", ""),
+                            alt_filename=rec.get("alt_filename"),
+                            match_context=ctx,
+                            source_line=rec.get("source_line"),
+                            sources=src,
+                        )
+                    )
+                elif rtype == "share":
+                    shares.append(
+                        ShareResult(
+                            severity=Severity.from_string(rec["severity"]),
+                            share_path=rec.get("share_path", ""),
+                            can_read=bool(rec.get("can_read", False)),
+                            can_write=bool(rec.get("can_write", False)),
+                            can_modify=bool(rec.get("can_modify", False)),
+                            source_line=rec.get("source_line"),
+                            sources=src,
+                        )
+                    )
+                elif rtype == "dir":
+                    dirs.append(
+                        DirResult(
+                            severity=Severity.from_string(rec["severity"]),
+                            dir_path=rec.get("dir_path", ""),
+                            source_line=rec.get("source_line"),
+                            sources=src,
+                        )
+                    )
+            except (ValueError, KeyError, TypeError) as exc:
+                if strict:
+                    raise ParseError(
+                        f"Line {line_number}: {exc}", line_number=line_number
+                    ) from exc
+                parse_warnings.append(f"Line {line_number}: {exc}")
+
     return ResultSet(
         files=files,
         shares=shares,
         dirs=dirs,
         warnings=parse_warnings if parse_warnings else None,
     )
-
-
-# ---------------------------------------------------------------------------
-# detect_format
-# ---------------------------------------------------------------------------
 
 
 def detect_format(path: Path | str) -> str:
@@ -420,6 +487,8 @@ def detect_format(path: Path | str) -> str:
     4. Otherwise → "tsv"
     """
     path = Path(path)
+    if path.suffix.lower() == ".jsonl":
+        return "jsonl"
     if path.suffix.lower() == ".json":
         return "json"
 
@@ -437,11 +506,6 @@ def detect_format(path: Path | str) -> str:
         pass
 
     return "tsv"
-
-
-# ---------------------------------------------------------------------------
-# parse (unified entry point)
-# ---------------------------------------------------------------------------
 
 
 def parse(
@@ -465,14 +529,11 @@ def parse(
         Propagated to the underlying parser.
     """
     fmt = format if format is not None else detect_format(path)
+    if fmt == "jsonl":
+        return parse_jsonl(path, strict=strict, unescape=unescape)
     if fmt == "json":
         return parse_json(path, strict=strict, unescape=unescape)
     return parse_tsv(path, strict=strict, unescape=unescape)
-
-
-# ---------------------------------------------------------------------------
-# parse_iter (streaming generator)
-# ---------------------------------------------------------------------------
 
 
 def parse_iter(
@@ -511,36 +572,58 @@ def parse_iter(
                 pass
 
 
-# ---------------------------------------------------------------------------
-# deduplicate
-# ---------------------------------------------------------------------------
+def _dedup_by_id(items: list) -> list:
+    """Collapse items sharing a finding_id: keep highest severity, union sources.
+
+    Preserves first-appearance order.
+    """
+    best: dict[str, object] = {}
+    sources: dict[str, set[str]] = {}
+    order: list[str] = []
+    for it in items:
+        fid = it.finding_id
+        if fid not in best:
+            best[fid] = it
+            sources[fid] = set(it.sources)
+            order.append(fid)
+        else:
+            sources[fid].update(it.sources)
+            if it.severity.sort_key < best[fid].severity.sort_key:
+                best[fid] = it
+    return [
+        dataclasses.replace(best[fid], sources=tuple(sorted(sources[fid])))
+        for fid in order
+    ]
 
 
 def deduplicate(result_set: ResultSet) -> ResultSet:
-    """Return a new ResultSet with duplicate FileResults collapsed.
+    """Return a new ResultSet with duplicate FileResults collapsed by finding_id.
 
-    For files with the same file_path, keep only the one with the highest
-    severity (lowest sort_key value).  ShareResults and DirResults pass
-    through unchanged.
+    Files sharing a finding_id (same path + rule + matched string) collapse to the
+    highest-severity instance, unioning their sources. ShareResults and DirResults
+    pass through unchanged.
     """
-    # Group by path; track best (lowest sort_key) FileResult per path
-    best: dict[str, FileResult] = {}
-    for fr in result_set.files:
-        existing = best.get(fr.file_path)
-        if existing is None or fr.severity.sort_key < existing.severity.sort_key:
-            best[fr.file_path] = fr
-
-    # Preserve original order of first appearance
-    seen: set[str] = set()
-    deduped: list[FileResult] = []
-    for fr in result_set.files:
-        if fr.file_path not in seen:
-            seen.add(fr.file_path)
-            deduped.append(best[fr.file_path])
-
     return ResultSet(
-        files=deduped,
+        files=_dedup_by_id(result_set.files),
         shares=list(result_set.shares),
         dirs=list(result_set.dirs),
         warnings=result_set.warnings,
     )
+
+
+def merge(result_sets: list[ResultSet], *, dedup: bool = True) -> ResultSet:
+    """Concatenate multiple ResultSets into one.
+
+    When dedup=True (default), findings of every type sharing a finding_id are
+    collapsed to the highest-severity instance with their sources unioned.
+    Warnings from all sets are concatenated.
+    """
+    files = [f for rs in result_sets for f in rs.files]
+    shares = [s for rs in result_sets for s in rs.shares]
+    dirs = [d for rs in result_sets for d in rs.dirs]
+    warnings = [w for rs in result_sets for w in (rs.warnings or [])]
+    if dedup:
+        files = _dedup_by_id(files)
+        shares = _dedup_by_id(shares)
+        dirs = _dedup_by_id(dirs)
+    return ResultSet(files=files, shares=shares, dirs=dirs, warnings=warnings or None)

@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import enum
+import hashlib
 import os
 import re
 from dataclasses import dataclass
 from datetime import datetime
-
-# ---------------------------------------------------------------------------
-# Severity ordering map (used by sort_key property)
-# ---------------------------------------------------------------------------
 
 _SEVERITY_ORDER = {"Black": 0, "Red": 1, "Yellow": 2, "Green": 3, "Gray": 4}
 
@@ -34,10 +31,6 @@ class Severity(enum.Enum):
         raise ValueError(f"Unknown severity: {s!r}")
 
 
-# ---------------------------------------------------------------------------
-# UNC path helper
-# ---------------------------------------------------------------------------
-
 _UNC_RE = re.compile(r"^\\\\([^\\]+)\\([^\\]+)")
 
 
@@ -49,9 +42,18 @@ def _parse_unc(path: str) -> tuple[str, str]:
     return "", ""
 
 
-# ---------------------------------------------------------------------------
-# FileResult
-# ---------------------------------------------------------------------------
+def _norm_matched(s: str) -> str:
+    """Collapse all whitespace runs to single spaces and strip ends.
+
+    Applied to matched strings so TSV and JSON inputs yield identical IDs.
+    """
+    return " ".join(s.split())
+
+
+def _hash_id(parts: tuple[str, ...]) -> str:
+    """Return the first 16 hex chars of the SHA-1 of NUL-joined parts."""
+    digest = hashlib.sha1("\0".join(parts).encode("utf-8", "replace"))
+    return digest.hexdigest()[:16]
 
 
 @dataclass(frozen=True)
@@ -68,6 +70,7 @@ class FileResult:
     alt_filename: str | None
     match_context: str
     source_line: int | None
+    sources: tuple[str, ...] = ()
 
     @property
     def hostname(self) -> str:
@@ -81,10 +84,13 @@ class FileResult:
     def extension(self) -> str:
         return os.path.splitext(self.file_path)[1]
 
-
-# ---------------------------------------------------------------------------
-# ShareResult
-# ---------------------------------------------------------------------------
+    @property
+    def finding_id(self) -> str:
+        norm = _norm_matched(self.matched_string)
+        parts = ["File", self.file_path, self.rule_name]
+        if norm:
+            parts.append(norm)
+        return _hash_id(tuple(parts))
 
 
 @dataclass(frozen=True)
@@ -95,6 +101,7 @@ class ShareResult:
     can_write: bool
     can_modify: bool
     source_line: int | None
+    sources: tuple[str, ...] = ()
 
     @property
     def hostname(self) -> str:
@@ -104,10 +111,9 @@ class ShareResult:
     def share_name(self) -> str:
         return _parse_unc(self.share_path)[1]
 
-
-# ---------------------------------------------------------------------------
-# DirResult
-# ---------------------------------------------------------------------------
+    @property
+    def finding_id(self) -> str:
+        return _hash_id(("Share", self.share_path))
 
 
 @dataclass(frozen=True)
@@ -115,15 +121,15 @@ class DirResult:
     severity: Severity
     dir_path: str
     source_line: int | None
+    sources: tuple[str, ...] = ()
 
     @property
     def hostname(self) -> str:
         return _parse_unc(self.dir_path)[0]
 
-
-# ---------------------------------------------------------------------------
-# ResultSet
-# ---------------------------------------------------------------------------
+    @property
+    def finding_id(self) -> str:
+        return _hash_id(("Dir", self.dir_path))
 
 
 @dataclass

@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import csv
+import json as _json
 from datetime import datetime, timezone
 
 
 from snafflemap.models import FileResult, ShareResult, DirResult, ResultSet, Severity
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+from snafflemap.exporters import jsonl as jsonl_exporter
 
 
 def _fr(
@@ -45,11 +42,6 @@ def _sample_rs():
     )
 
 
-# ---------------------------------------------------------------------------
-# TXT Exporter Tests
-# ---------------------------------------------------------------------------
-
-
 class TestTxtExporter:
     def test_export_creates_file(self, tmp_path):
         from snafflemap.exporters.txt import export
@@ -66,13 +58,11 @@ class TestTxtExporter:
         export(_sample_rs(), out)
         content = out.read_text(encoding="utf-8")
 
-        # Should have section headers for severities that have file results
         assert "Black" in content
         assert "Red" in content
         assert "Green" in content
 
-        # Should have "=" separator lines
-        assert "=" * 10 in content or "=" * 5 in content  # some = line exists
+        assert "=" * 10 in content or "=" * 5 in content
 
     def test_contains_share_section(self, tmp_path):
         from snafflemap.exporters.txt import export
@@ -82,7 +72,6 @@ class TestTxtExporter:
         content = out.read_text(encoding="utf-8")
 
         assert "SHARES" in content
-        # Share path should appear
         assert r"\\H\Share" in content
 
     def test_contains_directories_section(self, tmp_path):
@@ -107,10 +96,8 @@ class TestTxtExporter:
         export(rs, out, snippet_width=20)
         content = out.read_text(encoding="utf-8")
 
-        # The snippet should be truncated and end with "..."
         assert "A" * 20 in content
         assert "..." in content
-        # Full long string should not appear
         assert "A" * 100 not in content
 
     def test_file_size_human_readable(self, tmp_path):
@@ -118,9 +105,9 @@ class TestTxtExporter:
 
         rs = ResultSet(
             files=[
-                _fr(size=500),  # 500 B
-                _fr(size=2048),  # 2.0 KB
-                _fr(size=1048576),  # 1.0 MB
+                _fr(size=500),
+                _fr(size=2048),
+                _fr(size=1048576),
             ],
             shares=[],
             dirs=[],
@@ -129,7 +116,7 @@ class TestTxtExporter:
         export(rs, out)
         content = out.read_text(encoding="utf-8")
 
-        assert "B" in content  # some size unit present
+        assert "B" in content
         assert "KB" in content or "MB" in content
 
     def test_perms_flags(self, tmp_path):
@@ -164,14 +151,8 @@ class TestTxtExporter:
         out = tmp_path / "report.txt"
         export(rs, out)
         content = out.read_bytes()
-        # Should decode fine as UTF-8
         text = content.decode("utf-8")
         assert "caf" in text
-
-
-# ---------------------------------------------------------------------------
-# CSV Exporter Tests
-# ---------------------------------------------------------------------------
 
 
 class TestCsvExporter:
@@ -196,7 +177,6 @@ class TestCsvExporter:
         # 3 files + 1 share + 1 dir = 5 data rows
         assert len(rows) == 5
 
-        # Header columns must include union schema
         expected_cols = {
             "type",
             "severity",
@@ -258,7 +238,7 @@ class TestCsvExporter:
         row = rows[0]
         assert row["type"] == "share"
         assert row["severity"] == "Yellow"
-        # File-specific fields should be empty
+        # File-specific fields should be empty for a share row
         assert row["rule_name"] == ""
         assert row["file_size"] == ""
         assert row["extension"] == ""
@@ -310,11 +290,6 @@ class TestCsvExporter:
         assert raw[:3] == b"\xef\xbb\xbf"
 
 
-# ---------------------------------------------------------------------------
-# HTML Exporter Tests
-# ---------------------------------------------------------------------------
-
-
 class TestHtmlExporter:
     def test_export_creates_file(self, tmp_path):
         from snafflemap.exporters.html import export
@@ -353,11 +328,6 @@ class TestHtmlExporter:
         assert "<script" not in content
 
 
-# ---------------------------------------------------------------------------
-# Report Exporter Tests
-# ---------------------------------------------------------------------------
-
-
 class TestReportExporter:
     def test_export_creates_file(self, tmp_path):
         from snafflemap.exporters.report import export
@@ -377,30 +347,25 @@ class TestReportExporter:
         assert 'src="http' not in content
         assert 'href="http' not in content
 
-    def test_export_has_dashboard(self, tmp_path):
+    def test_export_has_app_shell(self, tmp_path):
+        # The report is now a client-rendered SPA: assert the mount shell and
+        # embedded data are present (views are rendered client-side from sm-data).
         from snafflemap.exporters.report import export
 
         out = tmp_path / "report.html"
         export(_sample_rs(), str(out))
         content = out.read_text()
-        assert "Total" in content or "total" in content
+        assert 'id="sm-app"' in content
+        assert 'id="sm-data"' in content
 
-    def test_export_has_tabs(self, tmp_path):
+    def test_export_has_view_switch(self, tmp_path):
         from snafflemap.exporters.report import export
 
         out = tmp_path / "report.html"
         export(_sample_rs(), str(out))
         content = out.read_text()
-        assert "severity" in content.lower()
-        assert "host" in content.lower()
-
-    def test_export_has_review_checkboxes(self, tmp_path):
-        from snafflemap.exporters.report import export
-
-        out = tmp_path / "report.html"
-        export(_sample_rs(), str(out))
-        content = out.read_text()
-        assert 'type="checkbox"' in content
+        assert 'id="sm-view-switch"' in content
+        assert 'data-view="workbench"' in content
 
     def test_export_has_search(self, tmp_path):
         from snafflemap.exporters.report import export
@@ -410,22 +375,6 @@ class TestReportExporter:
         content = out.read_text()
         assert "search" in content.lower() or "filter" in content.lower()
 
-    def test_export_has_file_links(self, tmp_path):
-        from snafflemap.exporters.report import export
-
-        out = tmp_path / "report.html"
-        export(_sample_rs(), str(out))
-        content = out.read_text()
-        assert "file://" in content
-
-    def test_export_has_save_button(self, tmp_path):
-        from snafflemap.exporters.report import export
-
-        out = tmp_path / "report.html"
-        export(_sample_rs(), str(out))
-        content = out.read_text()
-        assert "save" in content.lower() or "Save" in content
-
     def test_export_has_dark_mode(self, tmp_path):
         from snafflemap.exporters.report import export
 
@@ -434,10 +383,93 @@ class TestReportExporter:
         content = out.read_text()
         assert "dark" in content.lower()
 
-    def test_export_has_svg_chart(self, tmp_path):
+    def test_export_inlines_js_modules(self, tmp_path):
         from snafflemap.exporters.report import export
 
         out = tmp_path / "report.html"
         export(_sample_rs(), str(out))
         content = out.read_text()
-        assert "<svg" in content
+        for marker in ("SM:dom", "SM:data", "SM:app"):
+            assert marker in content
+
+
+class TestJsonlExporter:
+    def test_one_line_per_finding_with_id_and_type(self, sample_tsv, tmp_path):
+        from snafflemap.parsers import parse_tsv
+
+        rs = parse_tsv(sample_tsv)
+        out = tmp_path / "out.jsonl"
+        jsonl_exporter.export(rs, str(out))
+        lines = [
+            ln for ln in out.read_text(encoding="utf-8").splitlines() if ln.strip()
+        ]
+        assert len(lines) == rs.total_findings
+        first = _json.loads(lines[0])
+        assert "id" in first and len(first["id"]) == 16
+        assert first["type"] == "file"
+        assert "sources" in first and isinstance(first["sources"], list)
+
+    def test_file_record_fields(self, sample_tsv, tmp_path):
+        from snafflemap.parsers import parse_tsv
+
+        rs = parse_tsv(sample_tsv)
+        out = tmp_path / "out.jsonl"
+        jsonl_exporter.export(rs, str(out))
+        rec = _json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+        for key in (
+            "id",
+            "type",
+            "severity",
+            "rule_name",
+            "file_path",
+            "matched_string",
+            "file_size",
+            "modified_date",
+            "sources",
+        ):
+            assert key in rec
+
+
+class TestJsonlEnrichment:
+    def test_enrichment_block_written(self, tmp_path):
+        from datetime import datetime, timezone
+
+        from snafflemap.analysis.catalog import builtin_catalog
+        from snafflemap.analysis.enrich import enrich
+        from snafflemap.models import FileResult, ResultSet, Severity
+
+        f = FileResult(
+            severity=Severity.BLACK,
+            rule_name="R",
+            can_read=True,
+            can_write=False,
+            can_modify=False,
+            matched_string="",
+            file_size=1,
+            modified_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            file_path=r"\\DC\SYSVOL\Groups.xml",
+            alt_filename=None,
+            match_context='cpassword="AAAA"',
+            source_line=1,
+        )
+        rs = ResultSet(files=[f], shares=[], dirs=[])
+        enr = enrich(
+            rs, builtin_catalog(), now=datetime(2026, 1, 1, tzinfo=timezone.utc)
+        )
+        out = tmp_path / "e.jsonl"
+        jsonl_exporter.export(rs, str(out), enrichment=enr)
+        rec = _json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+        assert "enrichment" in rec
+        assert rec["enrichment"]["score"]["value"] > 0
+        assert "tier" in rec["enrichment"]["score"]
+        assert isinstance(rec["enrichment"]["detectors"], list)
+        assert isinstance(rec["enrichment"]["credentials"], list)
+
+    def test_no_enrichment_arg_omits_block(self, sample_tsv, tmp_path):
+        from snafflemap.parsers import parse_tsv
+
+        rs = parse_tsv(sample_tsv)
+        out = tmp_path / "p.jsonl"
+        jsonl_exporter.export(rs, str(out))
+        rec = _json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+        assert "enrichment" not in rec

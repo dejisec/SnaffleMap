@@ -12,11 +12,6 @@ from __future__ import annotations
 from snafflemap.models import ResultSet
 
 
-# ---------------------------------------------------------------------------
-# Internal key builders
-# ---------------------------------------------------------------------------
-
-
 def _file_key_for(key: str):
     """Return a single-attribute key function for a FileResult."""
     match key:
@@ -56,11 +51,6 @@ def _dir_key_for(key: str):
             return None
 
 
-# ---------------------------------------------------------------------------
-# Tuple-key builders
-# ---------------------------------------------------------------------------
-
-
 def _build_file_key(keys: list[str]):
     """Build a tuple key function for FileResult from a list of key names."""
     extractors = [_file_key_for(k) for k in keys if _file_key_for(k) is not None]
@@ -96,34 +86,39 @@ def _build_dir_key(keys: list[str]):
     return lambda d: tuple(fn(d) for fn in extractors)
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+def _score_key(enrichment):
+    """Return a key fn that sorts by descending enrichment score (highest first)."""
+    if not enrichment:
+        return lambda r: 0
+
+    def key(r):
+        e = enrichment.get(r.finding_id)
+        return -(e.score.value if e is not None else 0)
+
+    return key
 
 
-def apply_sort(result_set: ResultSet, keys: list[str]) -> ResultSet:
+def apply_sort(result_set: ResultSet, keys: list[str], enrichment=None) -> ResultSet:
     """Return a new ResultSet with each list independently sorted by *keys*.
 
-    Parameters
-    ----------
-    result_set:
-        The source ResultSet.  Its lists are not mutated.
-    keys:
-        Ordered list of sort-key names.  The first entry is the primary sort
-        key, the second is the secondary key, and so on.
-
-        Valid keys for files:   "severity", "modified", "path", "rule", "size"
-        Valid keys for shares:  "severity", "path"  (others ignored)
-        Valid keys for dirs:    "severity", "path"  (others ignored)
-
-    Returns
-    -------
-    ResultSet
-        A new ResultSet containing sorted copies of the three lists.
+    Supported keys: "severity", "modified", "path", "rule", "size" (files), plus
+    "score" (all types) when *enrichment* (finding_id -> Enrichment) is supplied.
+    Unknown keys are ignored. "score" sorts highest-first.
     """
-    sorted_files = sorted(result_set.files, key=_build_file_key(keys))
-    sorted_shares = sorted(result_set.shares, key=_build_share_key(keys))
-    sorted_dirs = sorted(result_set.dirs, key=_build_dir_key(keys))
+
+    def build(base_builder, keys_):
+        score_in = "score" in keys_
+        non_score = [k for k in keys_ if k != "score"]
+        base = base_builder(non_score)
+        if not score_in:
+            return base
+        skey = _score_key(enrichment)
+        # score is applied as the PRIMARY key (listed first), base keys break ties
+        return lambda r: (skey(r), base(r))
+
+    sorted_files = sorted(result_set.files, key=build(_build_file_key, keys))
+    sorted_shares = sorted(result_set.shares, key=build(_build_share_key, keys))
+    sorted_dirs = sorted(result_set.dirs, key=build(_build_dir_key, keys))
 
     return ResultSet(
         files=sorted_files,

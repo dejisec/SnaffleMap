@@ -15,11 +15,6 @@ from snafflemap.models import (
 from snafflemap.sorters import apply_sort
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _make_file(
     severity: Severity = Severity.RED,
     path: str = r"\\DC01\SYSVOL\a.bat",
@@ -68,11 +63,6 @@ def _make_dir(
     )
 
 
-# ---------------------------------------------------------------------------
-# apply_sort — files: sort by severity
-# ---------------------------------------------------------------------------
-
-
 class TestSortFilesBySeverity:
     def test_sort_by_severity_ascending(self):
         """Black (0) comes before Red (1) before Yellow (2)."""
@@ -99,11 +89,6 @@ class TestSortFilesBySeverity:
         assert result.files == [f1, f2]
 
 
-# ---------------------------------------------------------------------------
-# apply_sort — files: sort by modified date
-# ---------------------------------------------------------------------------
-
-
 class TestSortFilesByModified:
     def test_sort_by_modified_oldest_first(self):
         dt_old = datetime(2022, 1, 1)
@@ -123,11 +108,6 @@ class TestSortFilesByModified:
         assert result.files == [f]
 
 
-# ---------------------------------------------------------------------------
-# apply_sort — files: sort by path
-# ---------------------------------------------------------------------------
-
-
 class TestSortFilesByPath:
     def test_sort_by_path_case_insensitive(self):
         f_z = _make_file(path=r"\\H\S\zebra.txt")
@@ -143,11 +123,6 @@ class TestSortFilesByPath:
         rs = ResultSet(files=[f2, f1], shares=[], dirs=[])
         result = apply_sort(rs, ["path"])
         assert result.files == [f1, f2]
-
-
-# ---------------------------------------------------------------------------
-# apply_sort — files: sort by rule
-# ---------------------------------------------------------------------------
 
 
 class TestSortFilesByRule:
@@ -167,11 +142,6 @@ class TestSortFilesByRule:
         assert result.files == [f1, f2]
 
 
-# ---------------------------------------------------------------------------
-# apply_sort — files: sort by size
-# ---------------------------------------------------------------------------
-
-
 class TestSortFilesBySize:
     def test_sort_by_size_ascending(self):
         f_big = _make_file(size=9999)
@@ -187,11 +157,6 @@ class TestSortFilesBySize:
         rs = ResultSet(files=[f1, f2], shares=[], dirs=[])
         result = apply_sort(rs, ["size"])
         assert result.files == [f1, f2]
-
-
-# ---------------------------------------------------------------------------
-# apply_sort — composite keys (files)
-# ---------------------------------------------------------------------------
 
 
 class TestSortFilesCompositeKeys:
@@ -237,11 +202,6 @@ class TestSortFilesCompositeKeys:
         assert result.files == [f4, f3, f2, f1]
 
 
-# ---------------------------------------------------------------------------
-# apply_sort — shares
-# ---------------------------------------------------------------------------
-
-
 class TestSortShares:
     def test_sort_shares_by_severity(self):
         s_yellow = _make_share(Severity.YELLOW)
@@ -272,11 +232,6 @@ class TestSortShares:
         rs = ResultSet(files=[], shares=[], dirs=[])
         result = apply_sort(rs, ["severity"])
         assert result.shares == []
-
-
-# ---------------------------------------------------------------------------
-# apply_sort — dirs
-# ---------------------------------------------------------------------------
 
 
 class TestSortDirs:
@@ -310,11 +265,6 @@ class TestSortDirs:
         rs = ResultSet(files=[], shares=[], dirs=[])
         result = apply_sort(rs, ["path"])
         assert result.dirs == []
-
-
-# ---------------------------------------------------------------------------
-# apply_sort — independence of lists
-# ---------------------------------------------------------------------------
 
 
 class TestSortIndependence:
@@ -357,3 +307,44 @@ class TestSortIndependence:
         apply_sort(rs, ["severity"])
         # Original list order preserved
         assert rs.files == original_files
+
+
+class TestScoreSort:
+    def test_score_key_sorts_highest_first(self):
+        from datetime import datetime, timezone
+
+        from snafflemap.analysis.models import Enrichment, Score
+        from snafflemap.models import FileResult, ResultSet, Severity
+        from snafflemap.sorters import apply_sort
+
+        def mk(path, val):
+            f = FileResult(
+                severity=Severity.RED,
+                rule_name="R",
+                can_read=True,
+                can_write=False,
+                can_modify=False,
+                matched_string=path,
+                file_size=1,
+                modified_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                file_path=path,
+                alt_filename=None,
+                match_context="c",
+                source_line=1,
+            )
+            return f, Enrichment(finding_id=f.finding_id, score=Score(val, "x", ()))
+
+        a, ea = mk(r"\\H\S\a", 10)
+        b, eb = mk(r"\\H\S\b", 90)
+        rs = ResultSet(files=[a, b], shares=[], dirs=[])
+        enr = {ea.finding_id: ea, eb.finding_id: eb}
+        out = apply_sort(rs, ["score"], enrichment=enr)
+        assert [f.file_path for f in out.files] == [r"\\H\S\b", r"\\H\S\a"]
+
+    def test_score_key_ignored_without_enrichment(self):
+        # apply_sort must still work when enrichment is omitted (score key -> no-op)
+        from snafflemap.models import ResultSet
+        from snafflemap.sorters import apply_sort
+
+        out = apply_sort(ResultSet(files=[], shares=[], dirs=[]), ["score"])
+        assert out.files == []
